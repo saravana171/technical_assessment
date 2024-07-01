@@ -1,0 +1,47 @@
+{
+	"info": {
+		"_postman_id": "25c325b6-4133-4190-9966-c672fe0c7c71",
+		"name": "reservation",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "2948721"
+	},
+	"item": [
+		{
+			"name": "Fetch Train list",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8080/booking/train/list",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"booking",
+						"train",
+						"list"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Check Offers",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
+		},
+		{
+			"name": "Book tickets",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
+		}
+	]
+}

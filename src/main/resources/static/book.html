@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Train Ticket Booking</title>
+    <link rel="stylesheet" href="/assets/css/styles.css">
+</head>
+<body>
+
+
+    <form id="bookingForm" name="bookingForm" method="get">
+      <div id='error' class="error"></div>
+      
+  <div class="container">
+        <h3>Book Your Tickets</h3>
+		
+        <div id="formContainer">
+            <!-- Dynamically generated rows will be added here -->
+        </div>
+    </div>
+      <button type="button" onclick="submitForm()">book</button>
+    </form>
+	  <script src="/assets/js/scripts.js"></script>
+
+    <script>
+    init();
+    
+    
+    function init(){
+    	  let passengerInfo = localStorage.getItem('passengerInfo');
+     		if(!passengerInfo){
+       			alert('Session Expired, Redirecting to home page');
+       		   window.location.href = 'index.html';
+       		  return;
+       			
+       		}
+
+    	  passengerInfo = JSON.parse(passengerInfo);
+    	  let numTickets =  passengerInfo.numTickets;
+    	  loadElement(Number(numTickets));
+    	
+    }
+    
+        async  function fetchOfferDetails(place, travelDate) {
+    		 try {
+    	            const response = await  fetch(`http://localhost:8080/booking/train/offer?place=${place}&travelDate=${travelDate}`);
+    	            if (!response.ok) {
+    	                throw new Error(`HTTP error! status: ${response.status}`);
+    	            }
+    	            const data = await  response.json();
+    	            return data;
+    	        } catch (error) {
+    	            console.error('Error fetching data:', error);
+    	            document.getElementById('error').innerText = 'Service is unavailable, Please refresh the page';
+    	        }
+    }
+        
+    async function submitForm(){
+    
+    	let trainDetails = localStorage.getItem('trainDetails');
+   		let passengerInfo = localStorage.getItem('passengerInfo');
+   		if(!trainDetails || !passengerInfo){
+   			alert('Session Expired, Redirecting to home page');
+   		  window.location.href = 'index.html';
+   		  return;
+   			
+   		}
+   		let requestArr=[];
+   		trainDetails = JSON.parse(trainDetails);
+   		passengerInfo = JSON.parse(passengerInfo);
+   	  localStorage.removeItem('trainDetails');
+   	  localStorage.removeItem('passengerInfo');
+    	  
+    	document.getElementById('error').innerText = '';
+    	let passengerNames = document.getElementsByName("passengerName");
+    	let ticketTypes =  document.getElementsByName("ticketType");
+    	let travelDate =  passengerInfo.travelDate;
+    	let stationEnd =  trainDetails.stationEnd;
+    	
+    	
+    	let length = passengerNames.length;
+    	for(let i =0;i<length;++i){
+    		if(!passengerNames[i].value){
+    			document.getElementById('error').innerText = 'Please fill all the inputs';
+    			return;
+    		}
+    	}
+    	let totalCost = 0;
+    	let offerNotAvail =true;
+		if(length>3){
+			let data = await fetchOfferDetails(stationEnd, travelDate);
+			if(data.errcode==0){
+				offerNotAvail = false;
+				let offerTaken = false;
+				let childPresent = false;
+				for(let i =0;i<length;++i){
+					if(ticketTypes[i].value =='C'){
+						childPresent =true;
+		    		}
+					if(childPresent)break;
+				}
+		    	for(let i =0;i<length;++i){
+		    		let requestObj={};
+		    		let cost = getPassengerCost(trainDetails, ticketTypes[i].value);
+		    		if(ticketTypes[i].value =='S'&& !childPresent && !offerTaken){
+		    			cost = 0;
+		    			offerTaken= true;
+		    		}else if(ticketTypes[i].value =='C' && childPresent && !offerTaken){
+		    			cost = 0;
+		    			offerTaken= true;
+		    		}
+		    		requestObj.ticketAmt=cost;
+		    		requestObj.passengerName=passengerNames[i].value;
+		    		requestObj.ticketType=ticketTypes[i].value;
+		    		requestObj.trainNo=trainDetails.trainNo;
+		    		requestObj.trainName=trainDetails.trainName;
+		    		requestObj.travelDate=passengerInfo.travelDate;
+		    		requestObj.stationFrom=trainDetails.stationFrom;
+		    		requestObj.stationEnd=trainDetails.stationEnd;
+		    		requestArr.push(requestObj);
+		    		totalCost+=cost;
+		    	}
+		    	
+			}
+    	}
+		if(offerNotAvail){
+    		for(let i =0;i<length;++i){
+    			let requestObj={};
+    			let cost = getPassengerCost(trainDetails, ticketTypes[i].value);
+        		totalCost+=cost;
+        		requestObj.ticketAmt=cost;
+	    		requestObj.passengerName=passengerNames[i].value;
+	    		requestObj.ticketType=ticketTypes[i].value;
+	    		requestObj.trainNo=trainDetails.trainNo;
+	    		requestObj.trainName=trainDetails.trainName;
+	    		requestObj.travelDate=passengerInfo.travelDate;
+	    		requestObj.stationFrom=trainDetails.stationFrom;
+	    		requestObj.stationEnd=trainDetails.stationEnd;
+	    		requestArr.push(requestObj);
+        	}
+    	}
+    	alert('Total Cost is '+totalCost);
+    	await bookTicket(requestArr);
+    }
+    
+    function getPassengerCost(trainDetails, type){
+    	const adultCost = trainDetails.costAdult;
+    	const childCost = trainDetails.costChild;
+    	const senior = trainDetails.costSenior;
+    	if(type=='A')return adultCost;
+    	if(type=='C')return childCost;
+    	if(type=='S')return senior;
+    	return 0;
+    }
+    
+    function checkDateInRange(travelDate) {
+    	const offerStartDate = '';
+    	const offerEndDate = '';
+    }
+	
+    function loadElement(count){
+    	let formContainer = '';
+            for (let i=0;i<count;++i) { 
+            	formContainer+=generateRow(i);
+            } 
+            document.getElementById('formContainer').innerHTML = formContainer;
+    }
+
+        function generateRow(index) {
+           return `<div class="row">
+				       	<div class="input-group">
+				   		<label  for="passengerName">Name:</label>
+				   		<input type="text" maxlength="64" name="passengerName" id="passengerName${index}" required>
+				   	</div>
+				   	<div class="input-group">
+				   	 <label for="ticketType">Type of Tickets:</label>
+	                    <select id="ticketType${index}" onchange="checkChildRule(this.value);" name="ticketType" required>
+	                        <option value="A">Adult</option>
+	                        <option value="S">Senior Citizen</option>
+	                        <option value="C">Child</option>
+	                    </select>
+				   	</div>
+				   </div>`;
+        }
+        
+        async function bookTicket(request){
+        	 await fetch('http://localhost:8080/booking/book/ticket', {
+                 method: 'POST',
+                 headers: {
+                     'Content-Type': 'application/json'
+                 },
+                 body: JSON.stringify(request)
+             })
+             .then(response => response.json())
+             .then(data => {
+                 if(data.responseCode==0){
+                	 alert(data.responseMsg);
+                 }else{
+                	 alert('Sorry unable to book the ticket. Please try again!!');
+                 }
+             })
+             .catch(error => {
+                 console.error('Error:', error);
+                 alert('Sorry unable to book the ticket. Please try again!!');
+             });
+        	  window.location.href = 'index.html';
+        }
+        function checkChildRule(type){
+        	if(type=='C'){
+        		alert('Height Between 85 Cms And 140 Cms');
+        	}
+        }
+
+    </script>
+
+</body>
+</html>

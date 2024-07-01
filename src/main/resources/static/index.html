@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Train Ticket Booking</title>
+    <link rel="stylesheet" href="/assets/css/styles.css">
+</head>
+<body>
+
+
+ <div class="container">
+        <h1>Ticket Booking System</h1>
+        <form >
+            <div id='error' class="error"></div>
+					<label for="destination">Destination Station:</label>
+                    <select id="destination" name="destination" required>
+                        <option value="">-select-</option>
+                    </select>
+				<label for="date">Date of Journey:</label>
+				<input type="date" id="travelDate" name="travelDate" required>
+
+            <label for="numTickets">Number of Tickets:</label>
+            <input type="number" id="numTickets" name="numTickets"  required>
+
+            <button type="button" onclick="next()">Next</button>
+        </form>
+        <div id="ticket"></div>
+    </div>
+	  <script src="/assets/js/scripts.js"></script>
+
+    <script type="text/javascript">
+    fetchTrains();
+    let traindDetails =[];
+    async function fetchTrains() {
+    		 try {
+    	            const response = await fetch(`http://localhost:8080/booking/train/list`);
+    	            const data = await response.json();
+    	            let option = '<option value="">Select Destination</option>';
+    	            data.forEach(item => {
+    	            	traindDetails.push({ trainNo: item.trainNo,trainName: item.trainName, totalAvailableSeat: item.totalAvailableSeat, costAdult:item.costAdult, costSenior:item.costSenior, costChild:item.costChild, stationEnd:item.stationEnd, stationFrom:item.stationFrom});
+    	            	option += '<option value="'+item.trainName+'">'+item.trainName+'</option>';
+    	            });
+    	            document.getElementById('destination').innerHTML=option;
+    	        } catch (error) {
+    	            console.error('Error fetching data:', error);
+    	            document.getElementById('error').innerText = 'Service is unavailable, Please refresh the page';
+    	        }
+    }
+       
+    function next(){
+    	document.getElementById('error').innerText = '';
+    	if(traindDetails.length==0){
+    		  document.getElementById('error').innerText = 'Service is unavailable, Please refresh the page';
+    		  return;
+    	}
+    	
+    	let numTickets = document.getElementById('numTickets').value; 
+    	let destination = document.getElementById('destination').value; 
+    	let travelDate = document.getElementById('travelDate').value; 
+    	if(!numTickets || !destination || !travelDate){
+    		 document.getElementById('error').innerText = 'Please fill all the details';
+   		  return;
+    	}
+    	if(!checkDate(travelDate)){
+    		 document.getElementById('error').innerText = 'Invalid Travel Date';
+      		  return;
+    	}
+    	if(Number(numTickets)<1){
+   		 	document.getElementById('error').innerText = 'Number of tickes should be greater than 1';
+     		  return;
+   		}
+    	let selectedTrain ={};
+    	let errfound = false;
+    	traindDetails.forEach(item => {
+    		if(destination==item.trainName){
+    			selectedTrain = item;
+    			if(item.totalAvailableSeat==0){
+    				 document.getElementById('error').innerText = 'Ticket is not available, it is full';
+    	       		  errfound = true;
+    	       		 return;
+    			}else if(item.totalAvailableSeat<Number(numTickets)){
+       			 document.getElementById('error').innerText = 'Only '+item.totalAvailableSeat+' tickets available';
+       			errfound = true;
+       			 return;
+       		}
+    		}
+    		
+    	});
+    	if(errfound)return;
+    	let passengerInfo ={};
+    	passengerInfo.numTickets=numTickets;
+    	passengerInfo.destination=destination;
+    	passengerInfo.travelDate=travelDate;
+   	  	localStorage.setItem('trainDetails', JSON.stringify(selectedTrain));
+    	 localStorage.setItem('passengerInfo', JSON.stringify(passengerInfo));
+   	    window.location.href = 'book.html';
+    }
+    
+   
+    function checkDate(dateString) {
+        const inputDate = new Date(dateString);
+        const currentDate = new Date();
+        return inputDate >=currentDate;
+    }
+    
+    </script>
+
+</body>
+</html>
