@@ -63,7 +63,7 @@
    		  return;
     	}
     	if(!checkDate(travelDate)){
-    		 document.getElementById('error').innerText = 'Invalid Travel Date';
+    		 document.getElementById('error').innerText = 'You are allowed to book between 01-07-2024 and 10-07-2024';
       		  return;
     	}
     	if(Number(numTickets)<1){
@@ -100,8 +100,9 @@
    
     function checkDate(dateString) {
         const inputDate = new Date(dateString);
-        const currentDate = new Date();
-        return inputDate >=currentDate;
+        const startDate = new Date('2024-07-01');
+        const endDate = new Date('2024-07-10');
+        return inputDate >= startDate && inputDate <= endDate;
     }
     
     </script>

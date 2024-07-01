@@ -18,7 +18,28 @@
         <div id="formContainer">
             <!-- Dynamically generated rows will be added here -->
         </div>
+      
+           
     </div>
+    
+     <div id="popup" class="popup">
+        <div class="popup-content">
+            <span class="close">&times;</span>
+            <h2>Confirmation</h2>
+              <hr>
+              <div id='popuperror'></div>
+               <div id="summary"></div>
+<!--             <div id="totalTicket"></div> -->
+<!--            <div id="offerTicket"></div> -->
+<!--            <div id="totalcost"></div> -->
+   <hr>
+            <button type="button" id="yesBtn" onclick="confirm('Y')"class="confirm-btn">Yes</button>
+            <button type="button"  id="noBtn" onclick="confirm('N')" class="confirm-btn">No</button>
+              <button type="button"  onclick="printDetail()" style="display: none;" id='print' >print</button>
+                <button type="button"  onclick="closePopup()" style="display: none;" id='close' >close</button>
+        </div>
+    </div>
+ 
       <button type="button" onclick="submitForm()">book</button>
     </form>
 	  <script src="/assets/js/scripts.js"></script>
@@ -29,16 +50,16 @@
     
     function init(){
     	  let passengerInfo = localStorage.getItem('passengerInfo');
+      	
      		if(!passengerInfo){
        			alert('Session Expired, Redirecting to home page');
        		   window.location.href = 'index.html';
        		  return;
        			
        		}
-
-    	  passengerInfo = JSON.parse(passengerInfo);
-    	  let numTickets =  passengerInfo.numTickets;
-    	  loadElement(Number(numTickets));
+     		passengerInfo = JSON.parse(passengerInfo);
+     		let count = passengerInfo.numTickets;
+    	  loadElement(count);
     	
     }
     
@@ -55,9 +76,14 @@
     	            document.getElementById('error').innerText = 'Service is unavailable, Please refresh the page';
     	        }
     }
-        
+    	let requestArr=[];
+    	function closePopup(){
+    		localStorage.removeItem('passengerInfo');
+    		localStorage.removeItem('trainDetails');
+   		 	window.location.href = 'index.html';
+   		}
     async function submitForm(){
-    
+   	 document.getElementById('error').innerText = '';
     	let trainDetails = localStorage.getItem('trainDetails');
    		let passengerInfo = localStorage.getItem('passengerInfo');
    		if(!trainDetails || !passengerInfo){
@@ -66,11 +92,8 @@
    		  return;
    			
    		}
-   		let requestArr=[];
    		trainDetails = JSON.parse(trainDetails);
    		passengerInfo = JSON.parse(passengerInfo);
-   	  localStorage.removeItem('trainDetails');
-   	  localStorage.removeItem('passengerInfo');
     	  
     	document.getElementById('error').innerText = '';
     	let passengerNames = document.getElementsByName("passengerName");
@@ -88,9 +111,11 @@
     	}
     	let totalCost = 0;
     	let offerNotAvail =true;
+    	let offerCost = 0;
+    	let OfferTken = '';
 		if(length>3){
 			let data = await fetchOfferDetails(stationEnd, travelDate);
-			if(data.errcode==0){
+			if(data.responseCode==0){
 				offerNotAvail = false;
 				let offerTaken = false;
 				let childPresent = false;
@@ -104,11 +129,15 @@
 		    		let requestObj={};
 		    		let cost = getPassengerCost(trainDetails, ticketTypes[i].value);
 		    		if(ticketTypes[i].value =='S'&& !childPresent && !offerTaken){
+		    			offerCost = cost;
 		    			cost = 0;
 		    			offerTaken= true;
+		    			OfferTken = getTicketTypeDesc(ticketTypes[i].value);
 		    		}else if(ticketTypes[i].value =='C' && childPresent && !offerTaken){
+		    			offerCost = cost;
 		    			cost = 0;
 		    			offerTaken= true;
+		    			OfferTken = getTicketTypeDesc(ticketTypes[i].value);
 		    		}
 		    		requestObj.ticketAmt=cost;
 		    		requestObj.passengerName=passengerNames[i].value;
@@ -140,8 +169,23 @@
 	    		requestArr.push(requestObj);
         	}
     	}
-    	alert('Total Cost is '+totalCost);
-    	await bookTicket(requestArr);
+		let totl = totalCost+offerCost;
+		document.getElementById('popup').style.display = 'block';
+     	if(OfferTken){
+     		OfferTken='('+OfferTken+')';
+     	}
+    	   let table = `<table >
+    	                 <tr><td class="sumhead">Total Tickets</td><td class="sumval"> <span class="red">${length}</span></td></tr>
+    	                 <tr><td class="sumhead">Total Amount</td><td class="sumval"> <span class="red">${totl}</span></td></tr>
+    	                 <tr><td class="sumhead">Discount Cost</td><td class="sumval"> <span class="red"> - ${offerCost} ${OfferTken}</span></td></tr>
+    	                 <tr><td class="sumhead">Total Amount</td><td class="sumval"> <span class="red">${totalCost}</span></td></tr>`;
+    	                 
+           document.getElementById('summary').innerHTML = table;
+//     	   document.getElementById('totalTicket').innerHTML = `Total Tickets  : <span class="red">${length}</span>`;
+//     	   document.getElementById('totalcost').innerHTML =`Total Amount :  <span class="red">${totl}</span>`;
+//     	   document.getElementById('offerTicket').innerHTML =  `Discount Cost(${OfferTken}) : <span class="red">-${offerCost}</span>`;
+//     	   document.getElementById('totalPayable').innerHTML=`Total Amount :  <span class="red">${totalCost}</span>`;
+    	
     }
     
     function getPassengerCost(trainDetails, type){
@@ -153,6 +197,12 @@
     	if(type=='S')return senior;
     	return 0;
     }
+     function getTicketTypeDesc(type){
+    	 if(type=='A')return 'Adult';
+     	if(type=='C')return 'Child';
+     	if(type=='S')return 'Senior';
+     	return '';
+     }
     
     function checkDateInRange(travelDate) {
     	const offerStartDate = '';
@@ -161,7 +211,7 @@
 	
     function loadElement(count){
     	let formContainer = '';
-            for (let i=0;i<count;++i) { 
+            for (let i=0;i<Number(count);++i) { 
             	formContainer+=generateRow(i);
             } 
             document.getElementById('formContainer').innerHTML = formContainer;
@@ -175,11 +225,13 @@
 				   	</div>
 				   	<div class="input-group">
 				   	 <label for="ticketType">Type of Tickets:</label>
-	                    <select id="ticketType${index}" onchange="checkChildRule(this.value);" name="ticketType" required>
+	                    <select id="ticketType${index}" onchange="checkChildRule(this.value, ${index});" name="ticketType" required>
+	                  	  <option value="">-SELECT-</option>
 	                        <option value="A">Adult</option>
 	                        <option value="S">Senior Citizen</option>
 	                        <option value="C">Child</option>
 	                    </select>
+	                    <div class="cost" id="ticketcost${index}"></div>
 				   	</div>
 				   </div>`;
         }
@@ -195,23 +247,75 @@
              .then(response => response.json())
              .then(data => {
                  if(data.responseCode==0){
-                	 alert(data.responseMsg);
+                	 document.getElementById('popuperror').style.color='green';
+                	 document.getElementById('close').style.display = 'inline-block';
+                	 document.getElementById('popuperror').innerText =data.responseMsg;
+                	 document.getElementById('print').style.display = 'inline-block';
+                	 document.getElementById('noBtn').style.display = 'none';
+                	 document.getElementById('yesBtn').style.display = 'none';
                  }else{
-                	 alert('Sorry unable to book the ticket. Please try again!!');
+                	 document.getElementById('popuperror').style.color='red';
+                	 document.getElementById('popuperror').innerText ='Sorry unable to book the ticket. Please try again!!';
+                		 document.getElementById('close').style.display = 'inline-block';
+                     document.getElementById('print').style.display = 'none';
+                     
+                     document.getElementById('noBtn').style.display = 'none';
+                	 document.getElementById('yesBtn').style.display = 'none';
                  }
              })
              .catch(error => {
                  console.error('Error:', error);
-                 alert('Sorry unable to book the ticket. Please try again!!');
+                 document.getElementById('popuperror').style.color='red';
+                 document.getElementById('print').style.display = 'none';
+            	 document.getElementById('popuperror').innerText ='Sorry unable to book the ticket. Please try again!!';
+            		 document.getElementById('close').style.display = 'inline-block';
+            	    document.getElementById('noBtn').style.display = 'none';
+               	 document.getElementById('yesBtn').style.display = 'none';
              });
-        	  window.location.href = 'index.html';
+        	  
         }
-        function checkChildRule(type){
+        function checkChildRule(type, index){
         	if(type=='C'){
-        		alert('Height Between 85 Cms And 140 Cms');
+        		alert('If Child, height should be between 85 Cms And 140 Cms');
+        	}
+        	  let trainDetails = localStorage.getItem('trainDetails');
+        	  trainDetails = JSON.parse(trainDetails);
+        	let cost = getPassengerCost(trainDetails, type);
+        	
+        	document.getElementById('ticketcost'+index).innerText = 'Cost : '+cost;
+        }
+        
+        function confirm(confirmVal){
+        	if(confirmVal=='Y'){
+        		  localStorage.removeItem('trainDetails');
+        	   	  localStorage.removeItem('passengerInfo');
+        		bookTicket(requestArr);
+        	}else{
+        		document.getElementById('popup').style.display = 'none';
         	}
         }
 
+        function printDetail() { 
+        let table='<table>';
+        table+='<tr><td class="sumhead red"><b>Passenger Name</b></td><td class="sumval red"><b>Ticket Type</b></td></tr>';
+        for(let i=0;i<requestArr.length;++i){
+        	table+='<tr><td class="sumhead"><b>'+requestArr[i].passengerName+'</b></td><td class="sumval">'+requestArr[i].ticketType+'</td></tr>';
+        }
+ 	   table +='</table>';
+		var a = window.open('', '', 'height=500, width=500'); 
+			a.document.write('<html>'); 
+			a.document.write('<body > <h1>Ticket Booking Details</h1> <br>'); 
+			a.document.write('<p>Train No:<b>'+requestArr[0].trainNo+'</b></p>');
+			a.document.write('<p>Train Name:<b>'+requestArr[0].trainName+'</b></p>');
+			a.document.write('<p>Travel Date:<b>'+requestArr[0].travelDate+'</b></p>');
+			a.document.write('<p>Destination:<b>'+requestArr[0].stationEnd+'</b></p>');
+			a.document.write('<h3>Passenger List</h3>');
+			a.document.write(table);
+			a.document.write('</body ></html>'); 
+			a.document.close(); 
+			a.print(); 
+		} 
+        
     </script>
 
 </body>
